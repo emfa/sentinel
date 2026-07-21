@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import aws_cdk as cdk
 
+from stacks.messaging_stack import SentinelMessagingStack
 from stacks.storage_stack import SentinelStorageStack
 
 app = cdk.App()
@@ -17,5 +18,6 @@ app = cdk.App()
 #
 # For now, one account stands in for dev.
 SentinelStorageStack(app, "SentinelStorage-Dev")
+SentinelMessagingStack(app, "SentinelMessaging-Dev")
 
 app.synth()

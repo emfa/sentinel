@@ -32,6 +32,15 @@ def get_run_record(team_id: str, run_id: str) -> Optional[dict]:
     response = _table().get_item(Key={"team_id": team_id, "run_id": run_id})
     return response.get("Item")
 
+def put_run_record(item: dict) -> None:
+    """
+    Writes a full run record — an unconditional put, not a partial
+    update. Used by sentinel-intake for both new submissions and
+    re-runs (TAD Section 4.1). Every other Lambda uses
+    update_run_status instead, since they're only ever patching a
+    record intake already created.
+    """
+    _table().put_item(Item=item)
 
 def update_run_status(team_id: str, run_id: str, status: str, **extra_attributes) -> None:
     """
