@@ -20,6 +20,7 @@ doesn't get tangled up with resource creation.
 
 from aws_cdk import Duration, Stack
 from aws_cdk import aws_sqs as sqs
+from aws_cdk import aws_sns as sns
 from constructs import Construct
 
 
@@ -88,4 +89,13 @@ class SentinelMessagingStack(Stack):
             "SentinelDispatcherDlq",
             queue_name="sentinel-dispatcher-dlq",
             retention_period=Duration.days(14),
+        )
+
+        # ------------------------------------------------------------------
+        # Notification topic — sandbox stand-in for team onboarding
+        # ------------------------------------------------------------------
+        self.sandbox_team_topic = sns.Topic(
+            self,
+            "SentinelSandboxTeamNotifications",
+            topic_name="sentinel-notifications-sandbox-team",
         )
