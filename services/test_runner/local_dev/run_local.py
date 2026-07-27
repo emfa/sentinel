@@ -21,7 +21,8 @@ import time
 import uuid
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # repo root — for `shared.*` imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # services/<name>/ — for handler.py's local import
 
 import boto3  # noqa: E402
 

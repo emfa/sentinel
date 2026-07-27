@@ -13,7 +13,7 @@ updates DynamoDB status to COMPLETED or FAILED.
 import json
 import logging
 
-from services.test_runner.http_tool import execute_scenario
+from http_tool import execute_scenario
 from shared.aws.dynamodb_client import get_run_record, now_iso, update_run_status
 from shared.aws.s3_client import read_json, test_report_key, write_csv
 from shared.secrets.router import fetch_secret
@@ -100,6 +100,7 @@ def _process_one_run(body: dict):
             scenario, run_id,
             run_record.auth_header_name, run_record.auth_type,
             secret_value, run_record.timeout_ms,
+            run_record.test_env_urls[0],
         )
         for scenario in test_plan["scenarios"]
     ]
@@ -121,15 +122,17 @@ def _process_one_run(body: dict):
     )
 
 
-def _run_one_scenario(scenario, run_id, auth_header_name, auth_type, secret_value, timeout_ms):
+def _run_one_scenario(scenario, run_id, auth_header_name, auth_type, secret_value, timeout_ms, base_url):
     headers = dict(scenario.get("additional_headers", {}))
     headers.update(_build_auth_header(
         scenario.get("auth_mode", "valid"), auth_header_name, auth_type, secret_value
     ))
 
+    url = _build_full_url(base_url, scenario["endpoint"])
+
     result = execute_scenario(
         method=scenario["http_method"],
-        url=scenario["endpoint"],
+        url=url,
         headers=headers,
         body=scenario.get("request_body"),
         timeout_ms=timeout_ms,
@@ -147,7 +150,7 @@ def _run_one_scenario(scenario, run_id, auth_header_name, auth_type, secret_valu
         "Scenario Name": scenario["scenario_name"],
         "Description": scenario["description"],
         "HTTP Method": scenario["http_method"],
-        "Endpoint": scenario["endpoint"],
+        "Endpoint": url,
         "Request Headers": json.dumps(redacted_headers),
         "Request Body": json.dumps(scenario.get("request_body") or {}),
         "Expected Status": scenario["expected_status"],
@@ -183,6 +186,27 @@ def _build_auth_header(auth_mode: str, header_name: str, auth_type: str, secret_
     # oauth2 or anything unrecognized — bearer-style is a reasonable
     # default; revisit if oauth2 needs a genuinely different token flow.
     return {header_name: f"Bearer {secret_value}"}
+
+def _build_full_url(base_url: str, endpoint: str) -> str:
+    """
+    Combines the run's base test environment URL with a scenario's
+    endpoint. Handles both forms the LLM might produce: a relative
+    path (matching TestScenario.endpoint's own field description,
+    "Full endpoint path, e.g. '/applications'" — the intended, most
+    common case) or, defensively, an already-complete URL if the
+    model includes the scheme and host anyway.
+
+    Bug history: this combination step never existed until now. Every
+    prior test-runner run (Day 5's httpbin.org testing) used a
+    hand-crafted test plan with full URLs baked directly into
+    `endpoint`, which accidentally masked the fact that this logic
+    was completely missing — only surfaced once a real LLM-generated
+    test plan (using relative paths, exactly as our schema describes)
+    was fed through test-runner for the first time.
+    """
+    if endpoint.startswith("http://") or endpoint.startswith("https://"):
+        return endpoint
+    return base_url.rstrip("/") + "/" + endpoint.lstrip("/")    
 
 
 def _evaluate(scenario: dict, result: dict):

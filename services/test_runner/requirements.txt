@@ -1,3 +1,4 @@
 # Verified working versions as of 2026-07-19
 boto3==1.43.51
 requests==2.33.1
+pydantic==2.13.4

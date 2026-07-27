@@ -72,7 +72,7 @@ class SentinelMessagingStack(Stack):
             self,
             "SentinelStage3Queue",
             queue_name="sentinel-stage3-queue",
-            visibility_timeout=Duration.minutes(5),
+            visibility_timeout=Duration.minutes(11),
             dead_letter_queue=sqs.DeadLetterQueue(
                 max_receive_count=3,
                 queue=self.stage3_dlq,
