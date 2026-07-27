@@ -2,9 +2,10 @@
 sentinel-intake Lambda handler.
 
 Trigger: API Gateway (proxy integration)
-Routes (TAD Section 4.1):
-  POST /runs                 — new submission
-  POST /runs/{run_id}/rerun  — re-run
+Routes:
+  POST /runs                 — new submission (TAD Section 4.1)
+  POST /runs/{run_id}/rerun  — re-run (TAD Section 4.1)
+  GET  /runs/{run_id}        — status polling (TAD Section 11.3)
 
 Design principle: exactly ONE external write (DynamoDB) before
 returning a response. All downstream routing is sentinel-dispatcher's
@@ -19,6 +20,10 @@ INTAKE_COMPLETE is what actually makes the flattened re-run design
 work with zero special-casing in the dispatcher, matching the
 original intent from architecture review. TAD Section 6.3 needs a
 correction to remove the RERUN_IN_PROGRESS row.
+
+Day 6 addition: the GET status endpoint from TAD Section 11.3 was
+specified but never actually implemented until now — caught while
+wiring the real API Gateway routes in the Compute Stack.
 """
 
 import json
@@ -26,13 +31,15 @@ import logging
 import time
 import uuid
 
-from services.intake.validation import validate_submission
+from validation import validate_submission
 from shared.aws.dynamodb_client import get_run_record, now_iso, put_run_record
+from shared.aws.s3_client import generate_presigned_url
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 RUN_TTL_SECONDS = 365 * 24 * 60 * 60  # 1 year — TAD Section 6.1
+REPORT_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60  # 7 days — matches dispatcher's own link expiry
 
 # Fields that only make sense once a run has progressed past intake.
 # A fresh re-run hasn't reached those stages yet, so we strip them
@@ -55,6 +62,9 @@ def lambda_handler(event, context):
 
     if method == "POST":
         return _handle_new_run(event)
+
+    if method == "GET" and path_params.get("run_id"):
+        return _handle_get_status(event, path_params["run_id"])
 
     return _response(404, {"error": "NOT_FOUND"})
 
@@ -171,6 +181,49 @@ def _handle_rerun(event, referenced_run_id):
             "status_url": f"/runs/{new_run_id}",
         },
     )
+
+
+def _handle_get_status(event, run_id):
+    """
+    TAD Section 11.3. Note: generating a presigned URL below does NOT
+    by itself require S3 permissions to succeed — the call to
+    generate_presigned_url() is pure local signing, no API call. But
+    the resulting URL is only valid to actually USE if the signing
+    role (this Lambda's) has s3:GetObject on that key — otherwise the
+    URL builds fine and then 403s the moment someone clicks it. This
+    Lambda's IAM role needs read access to the artefacts bucket
+    because of this endpoint, which TAD Section 10.2 didn't
+    originally account for (intake was scoped as DynamoDB-only).
+    """
+    team_id = _get_header(event, "X-Team-ID")
+    if not team_id:
+        return _response(
+            400, {"error": "MISSING_TEAM_ID", "message": "X-Team-ID header is required"}
+        )
+
+    item = get_run_record(team_id, run_id)
+    if item is None:
+        return _response(
+            404, {"error": "RUN_NOT_FOUND", "message": f"No run found for run_id={run_id}"}
+        )
+
+    response_body = {
+        "run_id": item["run_id"],
+        "team_id": item["team_id"],
+        "status": item["status"],
+        "created_at": item.get("created_at"),
+        "updated_at": item.get("updated_at"),
+        "parent_run_id": item.get("parent_run_id"),
+    }
+
+    if item["status"] == "COMPLETED" and item.get("report_s3_key"):
+        response_body["report_url"] = generate_presigned_url(
+            item["report_s3_key"], REPORT_URL_EXPIRY_SECONDS
+        )
+    elif item["status"] == "FAILED":
+        response_body["error_detail"] = item.get("error_detail")
+
+    return _response(200, response_body)
 
 
 def _parse_body(event):

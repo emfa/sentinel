@@ -1,0 +1,101 @@
+{
+    "run_id": "local-test-001",
+    "scenarios": [
+        {
+            "scenario_id": "TC-001",
+            "scenario_name": "Happy path - 200 OK",
+            "description": "Basic reachability and status check",
+            "category": "happy_path",
+            "http_method": "GET",
+            "endpoint": "https://httpbin.org/status/200",
+            "auth_mode": "valid",
+            "additional_headers": {},
+            "request_body": null,
+            "expected_status": 200,
+            "expected_behavior": "Returns 200 OK"
+        },
+        {
+            "scenario_id": "TC-002",
+            "scenario_name": "Missing auth rejected",
+            "description": "Bearer endpoint should reject requests with no Authorization header",
+            "category": "auth_failure",
+            "http_method": "GET",
+            "endpoint": "https://httpbin.org/bearer",
+            "auth_mode": "missing",
+            "additional_headers": {},
+            "request_body": null,
+            "expected_status": 401,
+            "expected_behavior": "401 when Authorization header is absent"
+        },
+        {
+            "scenario_id": "TC-003",
+            "scenario_name": "Valid auth accepted",
+            "description": "Bearer endpoint should accept a well-formed Authorization header",
+            "category": "happy_path",
+            "http_method": "GET",
+            "endpoint": "https://httpbin.org/bearer",
+            "auth_mode": "valid",
+            "additional_headers": {},
+            "request_body": null,
+            "expected_status": 200,
+            "expected_behavior": "200 with the token echoed back"
+        },
+        {
+            "scenario_id": "TC-004",
+            "scenario_name": "Simulated business decline",
+            "description": "Simulates an API returning 422 for a declined business rule",
+            "category": "business_logic",
+            "http_method": "GET",
+            "endpoint": "https://httpbin.org/status/422",
+            "auth_mode": "valid",
+            "additional_headers": {},
+            "request_body": null,
+            "expected_status": 422,
+            "expected_behavior": "422 for a business rule violation"
+        },
+        {
+            "scenario_id": "TC-005",
+            "scenario_name": "Deliberate expectation mismatch",
+            "description": "Deliberately wrong expected_status to prove FAIL detection works",
+            "category": "boundary_value",
+            "http_method": "GET",
+            "endpoint": "https://httpbin.org/status/500",
+            "auth_mode": "valid",
+            "additional_headers": {},
+            "request_body": null,
+            "expected_status": 200,
+            "expected_behavior": "Deliberately wrong on purpose, to prove FAIL handling works"
+        },
+        {
+            "scenario_id": "TC-006",
+            "scenario_name": "Timeout and retry",
+            "description": "Endpoint delays 5s but our timeout is 1s - should retry once then record ERROR",
+            "category": "boundary_value",
+            "http_method": "GET",
+            "endpoint": "https://httpbin.org/delay/5",
+            "auth_mode": "valid",
+            "additional_headers": {},
+            "request_body": null,
+            "expected_status": 200,
+            "expected_behavior": "Should time out and be recorded as ERROR after one retry"
+        },
+        {
+            "scenario_id": "TC-007",
+            "scenario_name": "POST with JSON body",
+            "description": "Confirms the request body is actually sent",
+            "category": "happy_path",
+            "http_method": "POST",
+            "endpoint": "https://httpbin.org/post",
+            "auth_mode": "valid",
+            "additional_headers": {
+                "Content-Type": "application/json"
+            },
+            "request_body": {
+                "applicant_name": "Test User",
+                "annual_income": 50000
+            },
+            "expected_status": 200,
+            "expected_behavior": "200 with the body echoed back"
+        }
+    ]
+}

@@ -1,0 +1,2 @@
+# Verified working versions as of 2026-07-19
+boto3==1.43.51

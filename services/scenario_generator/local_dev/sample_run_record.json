@@ -5,7 +5,7 @@
     "openapi_spec": "{\"openapi\": \"3.0.0\", \"info\": {\"title\": \"Loan Application API\", \"version\": \"1.0.0\"}, \"paths\": {\"/applications\": {\"post\": {\"summary\": \"Submit a loan application\", \"requestBody\": {\"required\": true, \"content\": {\"application/json\": {\"schema\": {\"type\": \"object\", \"required\": [\"applicant_name\", \"annual_income\", \"loan_amount\"], \"properties\": {\"applicant_name\": {\"type\": \"string\"}, \"annual_income\": {\"type\": \"number\"}, \"loan_amount\": {\"type\": \"number\"}}}}}}, \"responses\": {\"201\": {\"description\": \"Application accepted\"}, \"400\": {\"description\": \"Invalid input\"}, \"401\": {\"description\": \"Unauthorized\"}, \"422\": {\"description\": \"Application declined\"}}}}}}",
     "auth_type": "bearer",
     "auth_header_name": "Authorization",
-    "vault_secret_reference": "sandbox-team/loan-api/token",
+    "vault_secret_reference": "aws:sandbox-team/loan-api/token",
     "test_env_urls": [
         "https://loan-api-test.internal.example.com"
     ],

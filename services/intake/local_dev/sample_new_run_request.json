@@ -3,7 +3,7 @@
     "auth": {
         "type": "bearer",
         "header_name": "Authorization",
-        "vault_secret_reference": "sandbox-team/loan-api/token"
+        "vault_secret_reference": "aws:sandbox-team/loan-api/token"
     },
     "test_env_urls": [
         "https://loan-api-test.internal.example.com"

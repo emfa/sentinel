@@ -1,0 +1,5 @@
+Run ID,Scenario ID,Scenario Name,Description,HTTP Method,Endpoint,Request Headers,Request Body,Expected Status,Actual Status,Expected Behaviour,Actual Response,Result,Failure Reason,Response Time (ms)
+local-test-001,TC-001,Happy Path,Valid application,POST,/applications,{},{},201,201,Application accepted,{"status":"accepted"},PASS,,142
+local-test-001,TC-002,Missing Auth Token,No auth header,POST,/applications,{},{},401,401,Rejected for missing auth,{"error":"unauthorized"},PASS,,88
+local-test-001,TC-003,Boundary Income Exactly 20000,Income at threshold,POST,/applications,{},{},201,422,Should accept at exactly 20000,{"error":"declined"},FAIL,API declined at exact threshold,151
+local-test-001,TC-004,Unreachable Endpoint Test,Simulated timeout,POST,/applications,{},{},201,,Application accepted,,ERROR,Connection timeout after 10000ms,10004

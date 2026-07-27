@@ -21,6 +21,8 @@ import yaml
 MAX_SPEC_BYTES = 300 * 1024  # 300KB — TAD Section 14, architect sign-off
 MIN_DOC_CHARS = 100
 
+SUPPORTED_SECRET_PROVIDERS = {"aws", "azure"}
+
 
 def validate_openapi_spec(spec) -> Optional[str]:
     if not spec or not isinstance(spec, str) or not spec.strip():
@@ -53,6 +55,10 @@ def validate_auth(auth) -> Optional[str]:
     TAD's stated rule is narrow, on purpose: only check the vault
     reference is present and non-empty. No Key Vault lookup happens
     here — that's Stage 3's job, at execution time.
+
+    Day 5 addition: also check the reference carries a recognized
+    provider prefix ("aws:..." or "azure:..."), since that's now the
+    required format for the cloud-agnostic secret router.
     """
     if not isinstance(auth, dict):
         return "auth is required and must be an object"
@@ -60,6 +66,21 @@ def validate_auth(auth) -> Optional[str]:
     vault_ref = auth.get("vault_secret_reference")
     if not vault_ref or not str(vault_ref).strip():
         return "auth.vault_secret_reference is required and must be non-empty"
+
+    vault_ref = str(vault_ref).strip()
+    if ":" not in vault_ref:
+        return (
+            f"auth.vault_secret_reference must be prefixed with a provider, "
+            f"e.g. 'aws:{vault_ref}'. Supported providers: "
+            f"{sorted(SUPPORTED_SECRET_PROVIDERS)}"
+        )
+
+    provider = vault_ref.split(":", 1)[0].strip().lower()
+    if provider not in SUPPORTED_SECRET_PROVIDERS:
+        return (
+            f"Unknown secret provider '{provider}'. Supported: "
+            f"{sorted(SUPPORTED_SECRET_PROVIDERS)}"
+        )
 
     return None
 
